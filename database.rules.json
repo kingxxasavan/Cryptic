@@ -1,0 +1,34 @@
+{
+  "rules": {
+    "cryptic": {
+      "users": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "library": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "listings": {
+        ".read": true,
+        "$id": {
+          ".write": "auth != null && (!data.exists() || data.child('ownerUid').val() === auth.uid)",
+          ".validate": "newData.child('ownerUid').val() === auth.uid && newData.child('title').isString() && newData.child('priceCents').isNumber()"
+        }
+      },
+      "reviews": {
+        ".read": true,
+        "$productId": {
+          "$reviewId": {
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.child('rating').isNumber() && newData.child('rating').val() >= 1 && newData.child('rating').val() <= 5 && newData.child('body').isString() && newData.child('body').val().length <= 2000"
+          }
+        }
+      }
+    }
+  }
+}

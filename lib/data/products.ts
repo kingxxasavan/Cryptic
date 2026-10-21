@@ -1,3 +1,4 @@
+import { slugify } from "@/lib/format";
 import type { CategoryId, ContentItem, Product } from "@/lib/types";
 
 type Seed = {
@@ -17,12 +18,6 @@ type Seed = {
   contents: ContentItem[];
   preview: string;
 };
-
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 
 const lessons = (titles: string[], base = 9): ContentItem[] =>
   titles.map((title, i) => ({ title, detail: `Lesson ${i + 1}`, minutes: base + ((i * 7) % 14) }));

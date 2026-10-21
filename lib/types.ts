@@ -40,6 +40,8 @@ export interface Product {
   preview: string;
   /** true when made by a user through the creator dashboard */
   userMade?: boolean;
+  /** display name for user made listings that have no seeded creator */
+  creatorName?: string;
 }
 
 export interface Creator {
