@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
+import { getProductById } from "@/lib/catalog";
 import { getStore } from "@/lib/store";
 import type { Product, Purchase } from "@/lib/types";
 
@@ -59,4 +60,13 @@ export function useLibrary() {
   }, [uid, authLoading]);
 
   return { items, loading: loading || authLoading, owns: (id: string) => items.some((i) => i.productId === id), refresh };
+}
+
+/** cart lines resolved to products, including community listings */
+export function useCartProducts(lines: { productId: string }[]) {
+  const { listings, loading } = useListings();
+  const items = lines
+    .map((l) => getProductById(l.productId) ?? listings.find((p) => p.id === l.productId))
+    .filter((p): p is Product => Boolean(p));
+  return { items, loading: loading && lines.some((l) => l.productId.startsWith("u_")) };
 }
