@@ -26,4 +26,6 @@ export interface DataStore {
 
 export interface HybridStore extends DataStore {
   mode(): StoreMode;
+  /** calls back right away with the current mode, then when it falls back. returns unsubscribe */
+  onMode(cb: (mode: StoreMode) => void): () => void;
 }

@@ -112,6 +112,15 @@ describe("hybrid store", () => {
     expect(store.mode()).toBe("local");
   });
 
+  it("tells mode listeners when it falls back", async () => {
+    const store = createHybridStore(brokenPrimary(infra), createLocalStore(memoryStorage()));
+    const seen: string[] = [];
+    const off = store.onMode((m) => seen.push(m));
+    await store.getListings();
+    off();
+    expect(seen).toEqual(["firebase", "local"]);
+  });
+
   it("passes user errors through without switching mode", async () => {
     const userErr = () => Object.assign(new Error("taken"), { code: "auth/email-already-in-use" });
     const store = createHybridStore(brokenPrimary(userErr), createLocalStore(memoryStorage()));

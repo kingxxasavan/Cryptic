@@ -24,9 +24,13 @@ export function isInfraError(e: unknown): boolean {
 export function createHybridStore(primary: DataStore, fallback: DataStore, startLocal = false): HybridStore {
   let mode: StoreMode = startLocal ? "local" : "firebase";
   let warned = false;
+  const modeListeners = new Set<(m: StoreMode) => void>();
 
   const degrade = (e: unknown) => {
-    mode = "local";
+    if (mode !== "local") {
+      mode = "local";
+      modeListeners.forEach((cb) => cb(mode));
+    }
     if (!warned && typeof console !== "undefined") {
       warned = true;
       console.info("[cryptic] Firebase unavailable, using browser storage instead.", e);
@@ -47,6 +51,11 @@ export function createHybridStore(primary: DataStore, fallback: DataStore, start
   return {
     name: "firebase",
     mode: () => mode,
+    onMode(cb) {
+      modeListeners.add(cb);
+      cb(mode);
+      return () => modeListeners.delete(cb);
+    },
     getUser: () => run((s) => s.getUser()),
     onUser(cb) {
       let p: User | null = null;

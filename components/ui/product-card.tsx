@@ -10,7 +10,7 @@ export function ProductCard({ product, priority }: { product: Product; priority?
   const name = creator?.name ?? product.creatorName ?? "Creator";
   return (
     <Link
-      href={`/product/${product.slug}`}
+      href={product.userMade ? `/listing/${product.id}` : `/product/${product.slug}`}
       className="card lift group flex flex-col overflow-hidden p-2"
       prefetch={priority ? true : undefined}
     >

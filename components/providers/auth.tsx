@@ -33,9 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (u || settled) setLoading(false);
       settled = true;
     });
+    const offMode = store.onMode(setMode);
     return () => {
       clearTimeout(t);
       off();
+      offMode();
     };
   }, []);
 
