@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Toaster } from "sonner";
+import { Providers } from "@/components/providers";
+import { Header } from "@/components/site/header";
+import { Footer } from "@/components/site/footer";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -19,7 +23,23 @@ export const viewport: Viewport = { themeColor: "#060608" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} ${serif.variable}`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="flex min-h-dvh flex-col">
+        <Providers>
+          <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-fg focus:px-4 focus:py-2 focus:text-ink">
+            Skip to content
+          </a>
+          <Header />
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </Providers>
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{ style: { background: "#121218", border: "1px solid rgb(255 255 255 / 0.1)", color: "#ededf1", borderRadius: 16 } }}
+        />
+      </body>
     </html>
   );
 }
