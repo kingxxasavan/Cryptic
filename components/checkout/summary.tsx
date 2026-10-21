@@ -7,7 +7,7 @@ export function OrderLines({ items, onRemove }: { items: Product[]; onRemove?: (
     <ul className="divide-y divide-line">
       {items.map((p) => (
         <li key={p.id} className="flex items-center gap-4 py-4">
-          <Cover product={p} className="h-14 w-20 shrink-0 rounded-xl" />
+          <Cover product={p} mini className="h-14 w-20 shrink-0 rounded-xl" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{p.title}</p>
             <p className="truncate text-sm text-faint">{p.tagline}</p>
