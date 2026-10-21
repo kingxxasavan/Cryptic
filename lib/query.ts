@@ -43,3 +43,9 @@ export function toSearchString(q: SearchQuery): string {
   if (q.max !== undefined) p.set("max", String(q.max / 100));
   return p.toString();
 }
+
+/** only allow same site paths after login, so ?next= can't bounce people to another site */
+export function safeNext(next: string | null | undefined, fallback = "/dashboard"): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return fallback;
+  return next;
+}
