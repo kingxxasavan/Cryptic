@@ -10,7 +10,7 @@ import { OrderLines, TotalsTable } from "@/components/checkout/summary";
 
 export default function CartPage() {
   const cart = useCart();
-  const { items } = useCartProducts(cart.lines);
+  const { items, loading } = useCartProducts(cart.lines);
   const totals = cartTotals(cart.lines, items);
 
   return (
@@ -18,7 +18,7 @@ export default function CartPage() {
       <Eyebrow>Cart</Eyebrow>
       <h1 className="text-gradient mt-3 text-4xl font-semibold tracking-[-0.04em]">Your cart</h1>
 
-      {!cart.ready ? (
+      {!cart.ready || loading ? (
         <div className="mt-10 h-40 animate-pulse rounded-3xl bg-white/[0.03]" />
       ) : items.length === 0 ? (
         <div className="card mt-10 flex flex-col items-center px-6 py-20 text-center">

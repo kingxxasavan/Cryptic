@@ -117,6 +117,8 @@ await check("publish a listing and find it in explore", async () => {
   await page.getByRole("heading", { name: "E2E Sales Call Skill" }).waitFor({ timeout: 20000 });
   await go("/explore?q=e2e+sales");
   await page.getByText("E2E Sales Call Skill").waitFor({ timeout: 20000 });
+  await page.getByText("1 result for").waitFor({ timeout: 20000 });
+  if (await page.getByText("Nothing yet").count()) throw new Error("empty state shown next to a result");
 });
 
 await check("log out and log back in", async () => {

@@ -10,6 +10,7 @@ export function validateDraft(d: ListingDraft): string | null {
   if (d.title.trim().length < 3 || d.title.length > 80) return "Title needs to be 3 to 80 characters.";
   if (d.tagline.trim().length < 3 || d.tagline.length > 120) return "Tagline needs to be 3 to 120 characters.";
   if (d.description.trim().length < 20) return "Description needs at least 20 characters.";
+  if (d.description.length > 5000) return "Description can be at most 5,000 characters.";
   if (!CATEGORIES.some((c) => c.id === d.category)) return "Pick a category.";
   if (!Number.isInteger(d.priceCents) || d.priceCents < 0 || d.priceCents > 100000) return "Price must be between $0 and $1,000.";
   return null;
@@ -26,11 +27,11 @@ export function productFromDraft(uid: string, creatorName: string, d: ListingDra
     category: d.category,
     priceCents: d.priceCents,
     creatorHandle: `u-${uid.slice(0, 10)}`,
-    creatorName,
+    creatorName: creatorName.slice(0, 60),
     rating: 0,
     reviewCount: 0,
     sales: 0,
-    tags: d.tags.map((t) => t.trim()).filter(Boolean).slice(0, 6),
+    tags: d.tags.map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 6),
     createdAt: new Date().toISOString().slice(0, 10),
     accent: Math.floor(Math.random() * 360),
     contents: [{ title: "Main file", detail: "Delivered after purchase" }],

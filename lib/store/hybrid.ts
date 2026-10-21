@@ -22,45 +22,68 @@ export function isInfraError(e: unknown): boolean {
 }
 
 export function createHybridStore(primary: DataStore, fallback: DataStore, startLocal = false): HybridStore {
-  let mode: StoreMode = startLocal ? "local" : "firebase";
+  // auth and data degrade separately: firebase auth can work while the database rules still deny
+  let dataMode: StoreMode = startLocal ? "local" : "firebase";
+  let authLocal = startLocal;
   let warned = false;
   const modeListeners = new Set<(m: StoreMode) => void>();
+  const pushers = new Set<() => void>();
 
-  const degrade = (e: unknown) => {
-    if (mode !== "local") {
-      mode = "local";
-      modeListeners.forEach((cb) => cb(mode));
-    }
+  const warn = (e: unknown) => {
     if (!warned && typeof console !== "undefined") {
       warned = true;
       console.info("[cryptic] Firebase unavailable, using browser storage instead.", e);
     }
   };
+  const degradeData = (e: unknown) => {
+    warn(e);
+    if (dataMode === "local") return;
+    dataMode = "local";
+    modeListeners.forEach((cb) => cb(dataMode));
+  };
+  const degradeAuth = (e: unknown) => {
+    degradeData(e);
+    if (authLocal) return;
+    authLocal = true;
+    pushers.forEach((p) => p());
+  };
 
   async function run<T>(call: (s: DataStore) => Promise<T>): Promise<T> {
-    if (mode === "local") return call(fallback);
+    if (dataMode === "local") return call(fallback);
     try {
       return await call(primary);
     } catch (e) {
       if (!isInfraError(e)) throw e;
-      degrade(e);
+      degradeData(e);
+      return call(fallback);
+    }
+  }
+
+  async function runAuth<T>(call: (s: DataStore) => Promise<T>): Promise<T> {
+    if (authLocal) return call(fallback);
+    try {
+      return await call(primary);
+    } catch (e) {
+      if (!isInfraError(e)) throw e;
+      degradeAuth(e);
       return call(fallback);
     }
   }
 
   return {
     name: "firebase",
-    mode: () => mode,
+    mode: () => dataMode,
     onMode(cb) {
       modeListeners.add(cb);
-      cb(mode);
+      cb(dataMode);
       return () => modeListeners.delete(cb);
     },
-    getUser: () => run((s) => s.getUser()),
+    getUser: () => runAuth((s) => s.getUser()),
     onUser(cb) {
       let p: User | null = null;
       let f: User | null = null;
-      const push = () => cb(mode === "local" ? f : (p ?? f));
+      const push = () => cb(authLocal ? f : (p ?? f));
+      pushers.add(push);
       const offF = fallback.onUser((u) => {
         f = u;
         push();
@@ -72,12 +95,13 @@ export function createHybridStore(primary: DataStore, fallback: DataStore, start
             push();
           });
       return () => {
+        pushers.delete(push);
         offF();
         offP();
       };
     },
-    signUp: (n, e, pw) => run((s) => s.signUp(n, e, pw)),
-    signIn: (e, pw) => run((s) => s.signIn(e, pw)),
+    signUp: (n, e, pw) => runAuth((s) => s.signUp(n, e, pw)),
+    signIn: (e, pw) => runAuth((s) => s.signIn(e, pw)),
     async signOut() {
       await Promise.allSettled([primary.signOut(), fallback.signOut()]);
     },

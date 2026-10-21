@@ -30,7 +30,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const cart = useCart();
-  const { items } = useCartProducts(cart.lines);
+  const { items, loading: itemsLoading } = useCartProducts(cart.lines);
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState<string | undefined>();
   const [email, setEmail] = useState("");
@@ -45,7 +45,7 @@ export default function CheckoutPage() {
     if (!loading && !user) router.replace("/login?next=/checkout");
   }, [loading, user, router]);
 
-  if (loading || !user || !cart.ready) {
+  if (loading || !user || !cart.ready || (itemsLoading && !paying)) {
     return (
       <Container className="max-w-5xl pt-14">
         <div className="h-96 animate-pulse rounded-3xl bg-white/[0.03]" />
@@ -88,7 +88,7 @@ export default function CheckoutPage() {
         sessionStorage.setItem(LAST_ORDER_KEY, JSON.stringify({ orderId: data.orderId, productIds: data.productIds, total: data.totals.total }));
       } catch {}
       router.push(`/checkout/success?order=${data.orderId}`);
-      cart.clear();
+      cart.removeMany(data.productIds);
     } catch {
       setError("Something went wrong. Check your connection and try again.");
       setPaying(false);

@@ -32,7 +32,7 @@ node scripts/e2e.mjs http://localhost:3000
 
 1. Firebase console → Authentication → Sign in method → enable **Email/Password**.
 2. Authentication → Settings → Authorized domains → add your Vercel domain.
-3. Realtime Database → Rules → paste `database.rules.json` and publish.
+3. Realtime Database → Rules. **Don't replace the whole thing**, other apps may use this database. Copy only the `"cryptic": { ... }` block from `database.rules.json` and paste it inside your existing `"rules": { ... }` next to the rules already there, then publish. (Or create a separate database instance just for Cryptic.)
 
 The Firebase web config in `lib/firebase.ts` is public by design. Access is controlled by the rules file.
 

@@ -46,6 +46,14 @@ export function toSearchString(q: SearchQuery): string {
 
 /** only allow same site paths after login, so ?next= can't bounce people to another site */
 export function safeNext(next: string | null | undefined, fallback = "/dashboard"): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return fallback;
-  return next;
+  // the URL parser silently drops tabs and newlines, so "/\t/evil.com" would become "//evil.com"
+  if (!next || /[\x00-\x20\x7f\\]/.test(next)) return fallback;
+  try {
+    const base = "https://cryptic.local";
+    const u = new URL(next, base);
+    if (u.origin !== base || !next.startsWith("/") || next.startsWith("//")) return fallback;
+    return u.pathname + u.search + u.hash;
+  } catch {
+    return fallback;
+  }
 }

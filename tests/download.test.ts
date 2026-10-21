@@ -31,5 +31,9 @@ describe("safeNext", () => {
     expect(safeNext("/\\evil.com")).toBe("/dashboard");
     expect(safeNext(null)).toBe("/dashboard");
     expect(safeNext("javascript:alert(1)")).toBe("/dashboard");
+    expect(safeNext("/\t/evil.com")).toBe("/dashboard");
+    expect(safeNext("/\n/evil.com")).toBe("/dashboard");
+    expect(safeNext("/\r/evil.com")).toBe("/dashboard");
+    expect(safeNext("/ /evil.com")).toBe("/dashboard");
   });
 });

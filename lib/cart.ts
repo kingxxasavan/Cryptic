@@ -16,3 +16,7 @@ export function cartTotals(lines: CartLine[], products: Product[], code?: string
   const fee = 0;
   return { subtotal, discount, fee, total: subtotal - discount + fee };
 }
+
+/** what stays in the cart after an order, so items that weren't paid for aren't lost */
+export const linesAfterOrder = (lines: CartLine[], paidIds: string[]): CartLine[] =>
+  lines.filter((l) => !paidIds.includes(l.productId));

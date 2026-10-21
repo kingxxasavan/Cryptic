@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addLine, cartTotals, removeLine } from "@/lib/cart";
+import { addLine, cartTotals, linesAfterOrder, removeLine } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
@@ -60,5 +60,11 @@ describe("formatPrice", () => {
     expect(formatPrice(4900)).toBe("$49");
     expect(formatPrice(1999)).toBe("$19.99");
     expect(formatPrice(0)).toBe("Free");
+  });
+});
+
+describe("linesAfterOrder", () => {
+  it("removes only what was paid for", () => {
+    expect(linesAfterOrder([{ productId: "a" }, { productId: "u_x1y2" }], ["a"])).toEqual([{ productId: "u_x1y2" }]);
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import { addLine, removeLine } from "@/lib/cart";
+import { addLine, linesAfterOrder, removeLine } from "@/lib/cart";
 import type { CartLine } from "@/lib/types";
 
 const KEY = "cryptic:cart";
@@ -54,6 +54,7 @@ interface CartCtx {
   count: number;
   add(productId: string): void;
   remove(productId: string): void;
+  removeMany(productIds: string[]): void;
   clear(): void;
   has(productId: string): boolean;
 }
@@ -66,11 +67,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const add = useCallback((id: string) => setCart((l) => addLine(l, id)), []);
   const remove = useCallback((id: string) => setCart((l) => removeLine(l, id)), []);
+  const removeMany = useCallback((ids: string[]) => setCart((l) => linesAfterOrder(l, ids)), []);
   const clear = useCallback(() => setCart(() => []), []);
 
   const value = useMemo<CartCtx>(
-    () => ({ lines, ready, count: lines.length, add, remove, clear, has: (id) => lines.some((l) => l.productId === id) }),
-    [lines, ready, add, remove, clear],
+    () => ({ lines, ready, count: lines.length, add, remove, removeMany, clear, has: (id) => lines.some((l) => l.productId === id) }),
+    [lines, ready, add, remove, removeMany, clear],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

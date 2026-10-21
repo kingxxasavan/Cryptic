@@ -1,5 +1,6 @@
 import { getFirebaseApp } from "@/lib/firebase";
 import { productFromDraft, randomId, validateDraft } from "@/lib/store/listing";
+import { sanitizeListing, sanitizeReview } from "@/lib/store/sanitize";
 import type { DataStore } from "@/lib/store/types";
 import type { Product, Purchase, Review, User } from "@/lib/types";
 import type { User as FbUser } from "firebase/auth";
@@ -104,9 +105,10 @@ export function createFirebaseStore(): DataStore {
       if (Object.keys(patch).length) await withTimeout(update(ref(d, `${ROOT}/library/${uid}`), patch));
     },
     async getListings() {
-      const all = (await readVal<Record<string, Product>>("listings")) ?? {};
-      return Object.values(all)
-        .map((p) => ({ ...p, tags: p.tags ?? [], contents: p.contents ?? [] }))
+      const all = (await readVal<Record<string, unknown>>("listings")) ?? {};
+      return Object.entries(all)
+        .map(([key, raw]) => sanitizeListing(key, raw))
+        .filter((p): p is Product => p !== null)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async createListing(uid, draft) {
@@ -118,12 +120,16 @@ export function createFirebaseStore(): DataStore {
       return p;
     },
     async getReviews(productId) {
-      const all = (await readVal<Record<string, Review>>(`reviews/${productId}`)) ?? {};
-      return Object.values(all).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const all = (await readVal<Record<string, unknown>>(`reviews/${productId}`)) ?? {};
+      return Object.entries(all)
+        .map(([key, raw]) => sanitizeReview(key, productId, raw))
+        .filter((r): r is Review => r !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async addReview(productId, r) {
+      const a = await auth();
       const review: Review = { id: randomId("r"), productId, ...r, createdAt: new Date().toISOString() };
-      await writeVal(`reviews/${productId}/${review.id}`, review);
+      await writeVal(`reviews/${productId}/${review.id}`, { ...review, uid: a.currentUser?.uid ?? "" });
       return review;
     },
   };

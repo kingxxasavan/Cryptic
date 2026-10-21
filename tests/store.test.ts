@@ -121,6 +121,57 @@ describe("hybrid store", () => {
     expect(seen).toEqual(["firebase", "local"]);
   });
 
+  describe("mixed mode: firebase auth works but the database denies", () => {
+    function authOkDataDenied() {
+      const fbUser = { uid: "fb_uid_123456", name: "Ada", email: "ada@example.com" };
+      let emit: (u: typeof fbUser | null) => void = () => {};
+      let current: typeof fbUser | null = null;
+      const p = brokenPrimary(infra);
+      p.onUser = (cb) => {
+        emit = (u) => {
+          current = u;
+          cb(u);
+        };
+        return () => {};
+      };
+      p.getUser = async () => current;
+      p.signIn = async () => {
+        emit(fbUser);
+        return fbUser;
+      };
+      return { p, fbUser, emitUser: () => emit(fbUser) };
+    }
+
+    it("keeps the firebase user when the db is denied before auth reports in", async () => {
+      const { p, fbUser, emitUser } = authOkDataDenied();
+      const store = createHybridStore(p, createLocalStore(memoryStorage()));
+      const seen: (string | null)[] = [];
+      store.onUser((u) => seen.push(u?.uid ?? null));
+      await store.getListings();
+      emitUser();
+      expect(seen.at(-1)).toBe(fbUser.uid);
+      expect((await store.getUser())?.uid).toBe(fbUser.uid);
+      expect(store.mode()).toBe("local");
+    });
+
+    it("keeps the firebase user when auth reports first and the db is denied after", async () => {
+      const { p, fbUser, emitUser } = authOkDataDenied();
+      const store = createHybridStore(p, createLocalStore(memoryStorage()));
+      const seen: (string | null)[] = [];
+      store.onUser((u) => seen.push(u?.uid ?? null));
+      emitUser();
+      await store.getListings();
+      expect(seen.at(-1)).toBe(fbUser.uid);
+    });
+
+    it("still signs in against firebase after the db degraded", async () => {
+      const { p, fbUser } = authOkDataDenied();
+      const store = createHybridStore(p, createLocalStore(memoryStorage()));
+      await store.getListings();
+      expect((await store.signIn("ada@example.com", "secret123")).uid).toBe(fbUser.uid);
+    });
+  });
+
   it("passes user errors through without switching mode", async () => {
     const userErr = () => Object.assign(new Error("taken"), { code: "auth/email-already-in-use" });
     const store = createHybridStore(brokenPrimary(userErr), createLocalStore(memoryStorage()));

@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { PRODUCTS, getCategory, searchProducts } from "@/lib/catalog";
 import { parseSearchParams, type RawParams } from "@/lib/query";
 import { Container, Eyebrow } from "@/components/ui/bits";
-import { ButtonLink } from "@/components/ui/button";
 import { Filters } from "@/components/explore/filters";
-import { UserResults } from "@/components/explore/user-results";
-import { ProductCard } from "@/components/ui/product-card";
+import { ExploreResults } from "@/components/explore/user-results";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<RawParams> }): Promise<Metadata> {
   const q = parseSearchParams(await searchParams);
@@ -28,27 +26,7 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
 
       <Filters query={query} />
 
-      <p className="mt-8 text-sm text-faint" aria-live="polite">
-        {results.length} {results.length === 1 ? "result" : "results"}
-        {query.q ? ` for “${query.q}”` : ""}
-      </p>
-
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <UserResults query={query} />
-        {results.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
-      </div>
-
-      {results.length === 0 && (
-        <div className="card mt-2 flex flex-col items-center px-6 py-20 text-center">
-          <p className="font-display text-5xl italic text-gold/70">Nothing yet</p>
-          <p className="mt-4 max-w-sm text-muted">No listings match that. Try fewer words, a different category, or browse everything.</p>
-          <ButtonLink href="/explore" variant="outline" className="mt-7">
-            Clear filters
-          </ButtonLink>
-        </div>
-      )}
+      <ExploreResults query={query} seeded={results} />
     </Container>
   );
 }

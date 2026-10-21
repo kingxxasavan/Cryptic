@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/auth";
+import { demoCredentials } from "@/lib/demo";
 import { safeNext } from "@/lib/query";
+import { browserStorage } from "@/lib/store/local";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/site/header";
 
-const DEMO = { name: "Demo Buyer", email: "demo@cryptic.dev", password: "cryptic-demo" };
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const auth = useAuth();
@@ -46,12 +47,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
   const demo = () =>
     run(async () => {
+      const demo = demoCredentials(browserStorage());
       try {
-        await auth.signIn(DEMO.email, DEMO.password);
+        await auth.signIn(demo.email, demo.password);
       } catch {
-        await auth.signUp(DEMO.name, DEMO.email, DEMO.password);
+        await auth.signUp(demo.name, demo.email, demo.password);
       }
-    }, "Signed in to the demo account");
+    }, "Signed in to your demo account");
 
   return (
     <div className="mx-auto flex min-h-[80vh] w-full max-w-md flex-col justify-center px-4 py-16">
