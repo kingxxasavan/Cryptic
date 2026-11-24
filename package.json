@@ -1,6 +1,6 @@
 {
-  "name": "cryptic",
-  "version": "0.1.0",
+  "name": "cryptic-parts",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,16 +9,24 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.cjs",
+    "postinstall": "node -e \"require('fs').copyFileSync('node_modules/manifold-3d/manifold.wasm','public/manifold.wasm')\""
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
     "firebase": "^11.10.0",
-    "framer-motion": "^11.18.2",
-    "next": "^16.4.2",
+    "geist": "^1.9.2",
+    "idb-keyval": "^6.3.0",
+    "manifold-3d": "^3.5.5",
+    "next": "^16.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "sonner": "^2.0.8"
+    "server-only": "^0.0.1",
+    "sonner": "^2.0.8",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
@@ -26,8 +34,9 @@
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.2",
+    "eslint-config-next": "^16.4.6",
     "playwright-core": "^1.64.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",

@@ -1,43 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
-import { Providers } from "@/components/providers";
-import { Header } from "@/components/site/header";
-import { Footer } from "@/components/site/footer";
+import { AuthProvider } from "@/components/auth/provider";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif" });
-
 export const metadata: Metadata = {
-  metadataBase: new URL("https://cryptic.vercel.app"),
-  title: { default: "Cryptic · The marketplace for AI craft", template: "%s · Cryptic" },
+  title: { default: "Cryptic Parts · Design every part with AI", template: "%s · Cryptic Parts" },
   description:
-    "Buy and sell Claude Skills, GPTs, prompt packs, context engineering guides and AI courses from the best creators.",
-  openGraph: { title: "Cryptic", description: "The marketplace for AI craft.", type: "website" },
+    "Describe what you're building. Cryptic Parts researches real sizes, designs every part in 3D, and lets you explode, edit, color and export them for printing.",
+  openGraph: { title: "Cryptic Parts", description: "Design every part of your project in 3D with AI.", type: "website" },
 };
 
-export const viewport: Viewport = { themeColor: "#060608" };
+export const viewport: Viewport = { themeColor: "#07070a", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${serif.variable}`}>
-      <body className="flex min-h-dvh flex-col">
-        <Providers>
-          <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-fg focus:px-4 focus:py-2 focus:text-ink">
-            Skip to content
-          </a>
-          <Header />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <Footer />
-        </Providers>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="min-h-dvh">
+        <AuthProvider>{children}</AuthProvider>
         <Toaster
           theme="dark"
           position="bottom-right"
-          toastOptions={{ style: { background: "#121218", border: "1px solid rgb(255 255 255 / 0.1)", color: "#ededf1", borderRadius: 16 } }}
+          toastOptions={{ style: { background: "#14141b", border: "1px solid rgb(255 255 255 / 0.1)", color: "#ececf2", borderRadius: 14 } }}
         />
       </body>
     </html>
