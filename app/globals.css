@@ -85,3 +85,14 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* The printable spec sheet: hidden on screen, the only thing printed. */
+.print-sheet { display: none; }
+@media print {
+  body * { visibility: hidden; }
+  .print-sheet, .print-sheet * { visibility: visible; }
+  .print-sheet { display: block; position: absolute; inset: 0; padding: 24px; color: #000; background: #fff; font-size: 11px; }
+  .print-sheet h1 { font-size: 20px; margin: 0 0 4px; }
+  .print-sheet table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .print-sheet th, .print-sheet td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; vertical-align: top; }
+}

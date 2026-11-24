@@ -74,7 +74,7 @@ export function designMessages(o: { description: string; brief: string; facts: F
 }
 
 export function editMessages(o: { project: Project; selected?: string | null; request: string; recent?: Msg[] }): Msg[] {
-  const compact = { name: o.project.name, parts: o.project.parts.map(({ realistic: _r, ...p }) => p) };
+  const compact = { name: o.project.name, parts: o.project.parts.map((p) => ({ ...p, realistic: undefined })) };
   return [
     { role: "system", content: `You edit a 3D product made of recipe parts. Change only what the request asks.\n\n${RECIPE_RULES}\n\nReply with JSON only: {"message":"one or two sentences on what you changed","changes":[CHANGE,…]}\nCHANGE is one of:\n {"op":"set_param","part":"id","name":"param","value":n}\n {"op":"add_param","part":"id","name":"param","param":{"value":n,"min":n,"max":n,"unit":"mm","source":"estimated"}}\n {"op":"set","part":"id","field":"name|purpose|attachesTo|material|color|finish|visible|position|rotation","value":…}\n {"op":"replace_shape","part":"id","shape":NODE,"params":{…new or changed params}}\n {"op":"add_part","part":PART}\n {"op":"remove_part","part":"id"}\n {"op":"rename_project","name":"…"}\nPrefer set_param when a size already exists. When adding a part, place it where it attaches.` },
     ...(o.recent || []).slice(-6),

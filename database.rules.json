@@ -1,67 +1,31 @@
 {
   "rules": {
-    "cryptic": {
-      "users": {
-        "$uid": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
-        }
-      },
-      "library": {
-        "$uid": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
-        }
-      },
-      "listings": {
-        ".read": true,
+    "parts": {
+      "projects": {
         "$id": {
-          ".write": "auth != null && (!data.exists() || data.child('ownerUid').val() === auth.uid)",
-          ".validate": "newData.hasChildren(['id', 'ownerUid', 'slug', 'title', 'tagline', 'description', 'category', 'priceCents', 'creatorHandle', 'createdAt', 'accent', 'userMade'])",
-          "id": { ".validate": "newData.val() === $id" },
-          "ownerUid": { ".validate": "newData.val() === auth.uid" },
-          "creatorHandle": { ".validate": "newData.isString() && newData.val().beginsWith('u-') && newData.val().length <= 12 && auth.uid.beginsWith(newData.val().replace('u-', ''))" },
-          "creatorName": { ".validate": "newData.isString() && newData.val().length <= 60" },
-          "slug": { ".validate": "newData.isString() && newData.val().length <= 140" },
-          "title": { ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 80" },
-          "tagline": { ".validate": "newData.isString() && newData.val().length <= 120" },
-          "description": { ".validate": "newData.isString() && newData.val().length <= 5000" },
-          "preview": { ".validate": "newData.isString() && newData.val().length <= 5000" },
-          "category": { ".validate": "newData.isString() && newData.val().matches(/^(claude-skills|gpts|prompt-packs|courses|context-engineering|agents-mcp)$/)" },
-          "priceCents": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
-          "createdAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
-          "accent": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 360" },
-          "rating": { ".validate": "newData.val() === 0" },
-          "reviewCount": { ".validate": "newData.val() === 0" },
-          "sales": { ".validate": "newData.val() === 0" },
-          "userMade": { ".validate": "newData.val() === true" },
-          "tags": {
-            "$i": { ".validate": "newData.isString() && newData.val().length <= 40" }
-          },
-          "contents": {
-            "$i": {
-              "title": { ".validate": "newData.isString() && newData.val().length <= 80" },
-              "detail": { ".validate": "newData.isString() && newData.val().length <= 200" },
-              "$other": { ".validate": false }
-            }
-          },
-          "$other": { ".validate": false }
+          ".read": "data.child('shared').val() === true || (auth != null && data.child('owner').val() === auth.uid)",
+          ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid) || (data.child('owner').val() === auth.uid && (!newData.exists() || newData.child('owner').val() === auth.uid)))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['name', 'owner', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 120)"
         }
       },
-      "reviews": {
-        ".read": true,
-        "$productId": {
-          "$reviewId": {
-            ".write": "auth != null && !data.exists()",
-            ".validate": "newData.hasChildren(['id', 'productId', 'uid', 'author', 'rating', 'body', 'createdAt'])",
-            "id": { ".validate": "newData.val() === $reviewId" },
-            "productId": { ".validate": "newData.val() === $productId" },
-            "uid": { ".validate": "newData.val() === auth.uid" },
-            "author": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60" },
-            "rating": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
-            "body": { ".validate": "newData.isString() && newData.val().length <= 2000" },
-            "createdAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
-            "$other": { ".validate": false }
+      "byOwner": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "meshes": {
+        "$id": {
+          ".read": "true",
+          ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid) || data.child('owner').val() === auth.uid)",
+          ".validate": "!newData.exists() || (newData.child('owner').isString() && newData.child('glb').isString() && newData.child('glb').val().length <= 8400000)"
+        }
+      },
+      "usage": {
+        "$uid": {
+          "$day": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
           }
         }
       }
