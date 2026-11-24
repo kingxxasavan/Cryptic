@@ -126,7 +126,7 @@ export function PartPanel({ part, project, build, readOnly, onChange, onRealisti
 
 export interface Chat { role: "user" | "assistant"; text: string; label?: string; error?: boolean }
 
-export function AIPanel({ chat, busy, selectedName, onSend, onClearSelection, signedIn }: { chat: Chat[]; busy: boolean; selectedName: string | null; onSend: (t: string) => void; onClearSelection: () => void; signedIn: boolean }) {
+export function AIPanel({ chat, busy, selectedName, onSend, onClearSelection }: { chat: Chat[]; busy: boolean; selectedName: string | null; onSend: (t: string) => void; onClearSelection: () => void }) {
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const send = () => { const t = text.trim(); if (!t || busy) return; onSend(t); setText(""); setTimeout(() => end.current?.scrollIntoView({ behavior: "smooth" }), 50); };
@@ -148,7 +148,7 @@ export function AIPanel({ chat, busy, selectedName, onSend, onClearSelection, si
         <div ref={end} />
       </div>
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-        <textarea className="textarea min-h-0" rows={2} placeholder={signedIn ? "e.g. make the left arm 5 mm longer" : "Sign in to ask the AI"} value={text} onChange={(e) => setText(e.target.value)}
+        <textarea className="textarea min-h-0" rows={2} placeholder="e.g. make the left arm 5 mm longer" value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} aria-label="Ask the AI" />
         <button className="btn btn-primary self-end" disabled={busy || !text.trim()} type="submit">Send</button>
       </form>

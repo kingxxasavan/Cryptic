@@ -13,8 +13,6 @@ import { usePartBuilds } from "@/lib/geometry/client";
 import { validateProject } from "@/lib/recipe/validate";
 import { saveProject, saveMesh, newId } from "@/lib/store/projects";
 import { editWithAI, realisticWithAI } from "@/lib/ai/client";
-import { useAuth } from "@/components/auth/provider";
-import { SignInDialog } from "@/components/auth/sign-in";
 import { AIPanel, BriefPanel, PartPanel, ResearchPanel, SpecsPanel, type Chat, type Tab } from "./inspector";
 import { ShareDialog } from "./share";
 import { LIBRARY } from "./library";
@@ -24,7 +22,6 @@ const Scene = dynamic(() => import("@/components/viewer/scene").then((m) => m.Sc
 const TABS: [Tab, string][] = [["part", "Part"], ["ai", "Ask AI"], ["brief", "Brief"], ["specs", "Specs"], ["research", "Research"]];
 
 export function Editor({ initial, readOnly = false }: { initial: Project; readOnly?: boolean }) {
-  const { me, token } = useAuth();
   const [hist, setHist] = useState<History>(() => history(initial));
   const project = hist.present;
   const [selected, setSelected] = useState<string | null>(null);
@@ -36,8 +33,7 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
   const [chat, setChat] = useState<Chat[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [realBusy, setRealBusy] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"saved" | "saving" | "local" | "error">(me ? "saved" : "local");
-  const [signIn, setSignIn] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [share, setShare] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const lastMerge = useRef<{ key: string; at: number } | null>(null);
@@ -67,10 +63,10 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
     if (first.current) { first.current = false; return; }
     setSaveState("saving");
     const t = setTimeout(() => {
-      saveProject(project, me?.uid || null).then(() => setSaveState(me ? "saved" : "local")).catch((e) => { setSaveState("error"); toast.error("Couldn't save: " + (e as Error).message); });
+      saveProject(project).then(() => setSaveState("saved")).catch((e) => { setSaveState("error"); toast.error((e as Error).message); });
     }, 700);
     return () => clearTimeout(t);
-  }, [project, me, readOnly]);
+  }, [project, readOnly]);
 
   // ---- keys ---------------------------------------------------------------------
   useEffect(() => {
@@ -90,12 +86,11 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
 
   // ---- AI -----------------------------------------------------------------------
   const ask = async (text: string) => {
-    if (!me) { setSignIn("Sign in to ask the AI for changes."); return; }
     const recent = chat.slice(-6).map((c) => ({ role: c.role, content: c.text }));
     setChat((c) => [...c, { role: "user", text }]);
     setAiBusy(true);
     try {
-      const r = await editWithAI({ project, selected, request: text, recent }, token);
+      const r = await editWithAI({ project, selected, request: text, recent });
       // Re-apply on this side so the result is exactly what the change list says.
       const applied = applyChanges(project, r.changes);
       if ("error" in applied) throw new Error(applied.error);
@@ -112,12 +107,11 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
   const realistic = async () => {
     if (!sel) return;
     if (sel.realistic) { updatePart({ ...sel, realistic: { ...sel.realistic, on: !sel.realistic.on } }, true); return; }
-    if (!me) { setSignIn("Sign in to make a realistic version with AI."); return; }
     setRealBusy(sel.id);
     try {
-      const glb = await realisticWithAI(`${sel.name}, ${sel.material.toLowerCase()}, ${sel.finish}`.slice(0, 77), token);
+      const glb = await realisticWithAI(`${sel.name}, ${sel.material.toLowerCase()}, ${sel.finish}`.slice(0, 77));
       const meshId = newId();
-      await saveMesh(meshId, glb, me.uid);
+      await saveMesh(meshId, glb);
       const now = project.parts.find((p) => p.id === sel.id);
       if (now) updatePart({ ...now, realistic: { meshId, on: true } }, true);
       toast.success("Realistic look ready. It's approximate; sizes still come from the exact shape.");
@@ -160,15 +154,13 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
         <span className="mx-1 text-faint">/</span>
         <input className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium outline-none focus:underline sm:max-w-md" value={project.name} disabled={readOnly} aria-label="Project name"
           onChange={(e) => commit({ ...project, name: e.target.value || " " }, "name")} />
-        <span className="hidden text-xs text-faint md:inline">{readOnly ? "View only" : saveState === "saving" ? "Saving…" : saveState === "local" ? "Saved in this browser" : saveState === "error" ? "Not saved" : "Saved"}</span>
+        <span className="hidden text-xs text-faint md:inline">{readOnly ? "View only" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Not saved" : project.shared ? "Saved · shared" : "Saved in this browser"}</span>
         <span className="flex-1" />
         {!readOnly && <>
           <button className="btn btn-sm btn-ghost btn-icon" onClick={() => setHist((h) => h.undo())} disabled={!hist.canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
           <button className="btn btn-sm btn-ghost btn-icon" onClick={() => setHist((h) => h.redo())} disabled={!hist.canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
-          <button className="btn btn-sm" onClick={() => (me ? setShare(true) : setSignIn("Sign in to share this project with a link."))}>Share</button>
+          <button className="btn btn-sm" onClick={() => setShare(true)}>Share</button>
         </>}
-        {me ? <span className="grid size-8 place-items-center rounded-full bg-raised text-xs font-semibold" title={me.email}>{(me.name || "?").slice(0, 1).toUpperCase()}</span>
-          : <button className="btn btn-sm" onClick={() => setSignIn("")}>Sign in</button>}
       </header>
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(280px,45dvh)_1fr] lg:grid-cols-[240px_1fr_380px] lg:grid-rows-1">
@@ -224,14 +216,13 @@ export function Editor({ initial, readOnly = false }: { initial: Project; readOn
                 <p className="mt-3 text-xs text-faint">{project.parts.length} parts. Drag to orbit, scroll to zoom, right drag to pan. Slide <b>Exploded</b> to pull the parts apart.</p>
               </div>
             ))}
-            {tab === "ai" && <AIPanel chat={chat} busy={aiBusy} selectedName={sel?.name || null} onSend={ask} onClearSelection={() => setSelected(null)} signedIn={!!me} />}
+            {tab === "ai" && <AIPanel chat={chat} busy={aiBusy} selectedName={sel?.name || null} onSend={ask} onClearSelection={() => setSelected(null)} />}
             {tab === "brief" && <BriefPanel project={project} readOnly={readOnly} onChange={(p) => commit(p)} />}
             {tab === "specs" && <SpecsPanel project={project} builds={builds} selected={selected} />}
             {tab === "research" && <ResearchPanel project={project} />}
           </div>
         </aside>
       </div>
-      {signIn !== null && <SignInDialog why={signIn || undefined} onClose={() => setSignIn(null)} />}
       {share && <ShareDialog project={project} onClose={() => setShare(false)} onShared={(shared) => commit({ ...project, shared })} />}
       <PrintSheet project={project} builds={builds} />
     </div>

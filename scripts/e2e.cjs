@@ -1,5 +1,5 @@
-// End to end in Chromium against a running build and the Firebase emulators, with the AI routes stubbed.
-// npx firebase emulators:start --only auth,database (database.rules.json), npm run build && npm start, then: node scripts/e2e.cjs http://127.0.0.1:3000
+// End to end in Chromium against a running build and the Firebase database emulator, with the AI routes stubbed.
+// npx firebase emulators:start --only database (database.rules.json), npm run build && npm start, then: node scripts/e2e.cjs http://127.0.0.1:3000
 const { chromium } = require('playwright');
 const OUT = process.env.SHOTS || require('os').tmpdir();
 const BASE = process.argv[2] || 'http://127.0.0.1:3000';
@@ -30,14 +30,7 @@ async function stub(page) {
   await stub(page);
   await page.goto(BASE + '/?emulators=1');
   await page.getByLabel("What are you building?").fill("A phone stand for my desk");
-  await page.getByRole('button', { name: 'Research and design it' }).click();
-  await page.getByRole('button', { name: 'New here? Create an account' }).click();
-  const email = "maker" + Date.now() + "@example.com";
-  const dlg = page.getByRole('dialog'); await dlg.getByLabel('Name', { exact: true }).fill('Test Maker'); await dlg.getByLabel('Email').fill(email); await dlg.getByLabel('Password').fill('secret123');
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await page.waitForTimeout(2500);
-  if (await page.getByRole('dialog').count()) { console.log('DIALOG:', (await page.getByRole('dialog').innerText()).replace(/\n/g, ' | ')); }
-  console.log('signed in:', await page.getByText(email).count() === 1);
+  console.log('no sign in anywhere:', await page.getByText(/sign in/i).count() === 0);
   await page.getByRole('button', { name: 'Research and design it' }).click();
   await page.waitForURL(/\/p\//, { timeout: 20000 });
   const url = page.url(); const id = url.split('/p/')[1].split(/[?#]/)[0];
@@ -78,7 +71,7 @@ async function stub(page) {
   console.log('embed view shows name:', await p2.getByText('Phone stand ↗').count() === 1);
   await p2.screenshot({ path: OUT + '/embed.png' });
   await p2.goto(BASE + '/p/' + id + '?emulators=1'); await p2.waitForTimeout(4000);
-  console.log('stranger sees view only bar:', await p2.getByText('Shared with you · view only').count() === 1, '| no Share button:', await p2.getByRole('button', { name: 'Share' }).count() === 0);
+  console.log('stranger sees no sign in:', await p2.getByText(/sign in/i).count() === 0); console.log('stranger sees view only bar:', await p2.getByText('Shared with you · view only').count() === 1, '| no Share button:', await p2.getByRole('button', { name: 'Share' }).count() === 0);
   // unshare → stranger refused
   await page.getByRole('button', { name: 'Share' }).click();
   await page.getByText('Anyone with the link can view and download').click(); await page.waitForTimeout(2500);

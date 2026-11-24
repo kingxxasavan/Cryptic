@@ -6,24 +6,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Editor } from "@/components/editor/editor";
-import { useAuth } from "@/components/auth/provider";
 import { loadProject, newId, saveProject } from "@/lib/store/projects";
 import type { Project } from "@/lib/recipe/types";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { me, ready } = useAuth();
   const router = useRouter();
-  const [state, setState] = useState<{ project: Project; where: "browser" | "cloud" } | { error: string } | null>(null);
-  useEffect(() => { if (ready) loadProject(id).then(setState); }, [id, ready]);
+  const [state, setState] = useState<{ project: Project; where: "browser" | "shared" } | { error: string } | null>(null);
+  useEffect(() => { loadProject(id).then(setState); }, [id]);
   if (!state) return <div className="grid h-dvh place-items-center"><span className="spinner" /></div>;
   if ("error" in state) return (
     <div className="grid h-dvh place-items-center p-6 text-center"><div><p className="text-lg">{state.error}</p><Link className="btn mt-4" href="/">Back to Cryptic Parts</Link></div></div>
   );
-  const mine = state.where === "browser" ? !state.project.owner || state.project.owner === me?.uid : !!me && state.project.owner === me.uid;
+  // Yours when it lives in this browser; a shared link from someone else is view only.
+  const mine = state.where === "browser";
   const copy = async () => {
-    const p: Project = { ...JSON.parse(JSON.stringify(state.project)), id: newId(), name: state.project.name + " (copy)", owner: me?.uid, shared: false, createdAt: Date.now(), updatedAt: Date.now() };
-    await saveProject(p, me?.uid || null);
+    const p: Project = { ...JSON.parse(JSON.stringify(state.project)), id: newId(), name: state.project.name + " (copy)", shared: false, createdAt: Date.now(), updatedAt: Date.now() };
+    await saveProject(p);
     toast.success("Copied. This one's yours to change.");
     router.push("/p/" + p.id);
   };

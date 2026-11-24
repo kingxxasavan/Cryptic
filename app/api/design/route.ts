@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   return ndjson(async (emit) => {
     emit({ left: g.left });
     const project = await designProject({ description, brief, name: body?.name ? String(body.name).slice(0, 120) : undefined, id }, emit);
-    project.owner = g.user.uid;
     emit({ project });
   });
 }

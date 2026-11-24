@@ -5,8 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useAuth } from "@/components/auth/provider";
-import { SignInDialog } from "@/components/auth/sign-in";
 import { designWithAI } from "@/lib/ai/client";
 import { deleteProject, listProjects, newId, saveProject, type Summary } from "@/lib/store/projects";
 import { sampleGlasses } from "@/lib/sample";
@@ -18,7 +16,6 @@ const ago = (t: number) => {
 };
 
 export default function Home() {
-  const { me, ready, token, signOut } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -26,24 +23,22 @@ export default function Home() {
   const [steps, setSteps] = useState<string[]>([]);
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
-  const [signIn, setSignIn] = useState<string | null>(null);
   const [projects, setProjects] = useState<Summary[] | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  useEffect(() => { if (ready) listProjects(me?.uid || null).then(setProjects); }, [ready, me]);
+  useEffect(() => { listProjects().then(setProjects); }, []);
 
-  const open = async (p: Project) => { await saveProject(p, me?.uid || null); router.push("/p/" + p.id); };
+  const open = async (p: Project) => { await saveProject(p); router.push("/p/" + p.id); };
 
   const design = async () => {
     if (!description.trim()) { toast.error("Say what you're building first."); return; }
-    if (!me) { setSignIn("Sign in so the AI can research and design your parts. It's free."); return; }
     setBusy(true); setSteps(["Starting"]); setModel("");
     abort.current = new AbortController();
     try {
-      const p = await designWithAI({ description, brief, name: name.trim() || undefined, id: newId() }, token,
+      const p = await designWithAI({ description, brief, name: name.trim() || undefined, id: newId() },
         { step: (s) => setSteps((x) => [...x, s]), model: setModel }, abort.current.signal);
       toast.success(`Designed ${p.parts.length} parts`);
-      await open({ ...p, owner: me.uid });
+      await open(p);
     } catch (e) {
       if ((e as Error).name !== "AbortError") toast.error((e as Error).message, { duration: 10000 });
       setBusy(false);
@@ -54,9 +49,6 @@ export default function Home() {
     <div className="min-h-dvh">
       <header className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5">
         <Link href="/" className="flex items-center gap-2 font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-gold text-[#17130b]">◆</span>Cryptic Parts</Link>
-        <span className="flex-1" />
-        {me ? <><span className="hidden text-sm text-muted sm:inline">{me.email}</span><button className="btn btn-sm btn-ghost" onClick={() => signOut()}>Sign out</button></>
-          : <button className="btn btn-sm" onClick={() => setSignIn("")}>Sign in</button>}
       </header>
 
       <main className="mx-auto grid max-w-6xl gap-10 px-5 pb-20 pt-6 lg:grid-cols-[1.1fr_1fr]">
@@ -84,7 +76,7 @@ export default function Home() {
               <label className="field"><span className="label">Brief: paste your brainstorms, plans and requirements</span>
                 <textarea className="textarea font-mono text-xs" rows={7} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Everything you've talked through: what it's for, who uses it, what you decided, sizes you already know, how it gets made…" /></label>
               <button className="btn btn-primary h-11" type="submit">Research and design it</button>
-              <p className="text-xs text-faint">Takes about a minute. {me ? "" : "You'll be asked to sign in (free)."}</p>
+              <p className="text-xs text-faint">Takes about a minute. No account needed.</p>
             </form>
           ) : (
             <div aria-live="polite">
@@ -103,18 +95,18 @@ export default function Home() {
         </section>
 
         <section className="lg:col-span-2">
-          <div className="mb-3 flex items-center gap-3"><h2 className="text-lg font-semibold">Your projects</h2>{!me && <span className="text-xs text-faint">Saved in this browser. Sign in to keep them everywhere and share them.</span>}</div>
+          <div className="mb-3 flex items-center gap-3"><h2 className="text-lg font-semibold">Your projects</h2><span className="text-xs text-faint">Saved in this browser. Share one to get a link.</span></div>
           {projects === null ? <span className="spinner" /> : !projects.length ? <p className="text-sm text-muted">None yet. Open the sample or design your first one.</p> : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
                 <li key={p.id} className="card group flex items-center gap-3 p-4">
                   <Link href={"/p/" + p.id} className="min-w-0 flex-1">
                     <div className="truncate font-medium group-hover:text-gold">{p.name}</div>
-                    <div className="text-xs text-faint">{p.parts} parts · {ago(p.updatedAt)} · {p.where === "cloud" ? (p.shared ? "shared" : "saved") : "this browser"}</div>
+                    <div className="text-xs text-faint">{p.parts} parts · {ago(p.updatedAt)}{p.shared ? " · shared" : ""}</div>
                   </Link>
                   <button className="btn btn-sm btn-ghost text-faint" aria-label={"Delete " + p.name} onClick={async () => {
                     if (!confirm(`Delete “${p.name}”? This can't be undone.`)) return;
-                    await deleteProject(p.id, me?.uid || null); setProjects((x) => (x || []).filter((y) => y.id !== p.id));
+                    await deleteProject(p.id); setProjects((x) => (x || []).filter((y) => y.id !== p.id));
                   }}>Delete</button>
                 </li>
               ))}
@@ -122,7 +114,6 @@ export default function Home() {
           )}
         </section>
       </main>
-      {signIn !== null && <SignInDialog why={signIn || undefined} onClose={() => setSignIn(null)} />}
     </div>
   );
 }
