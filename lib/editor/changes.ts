@@ -64,7 +64,8 @@ export function applyChanges(project: Project, changes: Change[]): Applied {
       case "add_part": {
         if (!c.part || typeof c.part !== "object") return { error: `${where}: no part given` };
         if (find(c.part.id)) return { error: `${where}: a part "${c.part.id}" already exists` };
-        next.parts.push({ visible: true, attachesTo: [], purpose: "", finish: "matte", position: [0, 0, 0], rotation: [0, 0, 0], ...c.part });
+        const defaults: Pick<Part, "visible" | "attachesTo" | "purpose" | "finish" | "position" | "rotation"> = { visible: true, attachesTo: [], purpose: "", finish: "matte", position: [0, 0, 0], rotation: [0, 0, 0] };
+        next.parts.push(Object.assign(defaults, c.part) as Part);
         break;
       }
       case "remove_part": {

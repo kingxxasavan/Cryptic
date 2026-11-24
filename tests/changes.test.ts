@@ -34,7 +34,7 @@ describe("applyChanges", () => {
     expect(rm.project.parts[0].attachesTo).toEqual([]);
   });
   it("only known fields can be set", () => {
-    const r = applyChanges(tiny(), [{ op: "set", part: "arm", field: "shape", value: {} }]);
+    const r = applyChanges(tiny(), [{ op: "set", part: "arm", field: "shape" as "name", value: {} }]);
     expect("error" in r).toBe(true);
     const ok = applyChanges(tiny(), [{ op: "set", part: "arm", field: "color", value: "#ff0000" }, { op: "set", part: "arm", field: "position", value: [1, 2, 3] }]);
     if ("error" in ok) throw new Error(ok.error);
