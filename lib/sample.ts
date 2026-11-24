@@ -39,7 +39,7 @@ function hinge(id: string, name: string, x: number): Part {
 function temple(id: string, name: string, x: number): Part {
   const bar = (y: string, z: string): Node => at(0, y, z, { type: "box", w: "thick", d: 1, h: "height" });
   return part({
-    id, name, purpose: "Arm that runs back over the ear", attachesTo: [id.replace("temple", "hinge"), id.replace("temple", "battery")], material: "PLA", color: "#2a2a30",
+    id, name, purpose: "Arm that runs back over the ear", attachesTo: [id.replace("temple", "hinge"), id.replace("temple", "battery")], material: "PLA", color: "#34343e",
     position: [x, 10, 11],
     params: { length: mm(145, 120, 160, "typical adult temple length is 135 to 150"), straight: mm(112, 80, 140, "where the ear bend starts"), height: mm(6, 4, 10), thick: mm(3.5, 2.4, 6), drop: mm(20, 8, 35, "how far the tip bends down") },
     shape: { type: "union", children: [
@@ -76,7 +76,7 @@ function nosePad(id: string, name: string, x: number): Part {
 export function sampleGlasses(id: string): Project {
   const now = Date.now();
   const frame = part({
-    id: "frame_front", name: "Frame front", purpose: "Holds the lenses, the camera and the hinges", attachesTo: [], material: "PLA", color: "#1c1c22",
+    id: "frame_front", name: "Frame front", purpose: "Holds the lenses, the camera and the hinges", attachesTo: [], material: "PLA", color: "#34343e",
     params: {
       width: mm(140, 120, 155, "typical adult frame width"), height: mm(44, 34, 56), thick: mm(5, 3, 8), corner: mm(10, 4, 18),
       lens_w: mm(52, 40, 60), lens_h: mm(38, 28, 46), bridge: mm(18, 14, 24, "typical bridge width is 16 to 20"),

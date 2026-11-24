@@ -183,7 +183,7 @@ export function SpecsPanel({ project, builds, selected }: { project: Project; bu
           <select className="select w-auto py-1 text-xs" value={scope} onChange={(e) => setScope(e.target.value as Scope)} aria-label="What to export">
             <option value="all">Every part</option><option value="visible">Visible parts</option><option value="selected" disabled={!selected}>Selected part</option>
           </select></div>
-        <div className="grid grid-cols-5 gap-1.5">{FORMATS.map((f) => <button key={f.id} className="btn btn-sm" title={f.note} onClick={() => get(f.id)}>{f.label}</button>)}</div>
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">{FORMATS.map((f) => <button key={f.id} className="btn btn-sm" title={f.note} onClick={() => get(f.id)}>{f.label}</button>)}</div>
         <p className="mt-2 text-xs text-faint">Millimetres. 3MF keeps every part separate with its color; STL works with any slicer.</p>
       </div>
       <div className="flex gap-2">

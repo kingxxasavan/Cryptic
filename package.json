@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node scripts/e2e.mjs",
+    "e2e": "node scripts/e2e.cjs",
     "postinstall": "node -e \"require('fs').copyFileSync('node_modules/manifold-3d/manifold.wasm','public/manifold.wasm')\""
   },
   "dependencies": {

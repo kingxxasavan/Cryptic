@@ -111,16 +111,17 @@ function PartMesh({ part, build, selected, offset, onSelect, setRef }: { part: P
   );
 }
 
-function FitOnReady({ count, fitKey }: { count: number; fitKey?: number }) {
+function FitOnReady({ count, total, fitKey }: { count: number; total: number; fitKey?: number }) {
   const bounds = useBounds();
   const did = useRef(-1);
   useEffect(() => {
-    if (!count) return;
+    // Wait for every visible part, or the view fits only the first few.
+    if (!count || count < total) return;
     if (did.current === (fitKey ?? 0)) return;
     did.current = fitKey ?? 0;
     const t = setTimeout(() => bounds.refresh().clip().fit(), 60);
     return () => clearTimeout(t);
-  }, [count, fitKey, bounds]);
+  }, [count, total, fitKey, bounds]);
   return null;
 }
 
@@ -130,7 +131,8 @@ function Assembly(p: SceneProps) {
   const [target, setTarget] = useState<Group | null>(null);
   const sel = p.selected ? p.parts.find((x) => x.id === p.selected) : undefined;
   useEffect(() => { setTarget(p.selected ? refs.current[p.selected] || null : null); }, [p.selected, p.builds]);
-  const built = p.parts.filter((x) => p.builds[x.id]?.solid).length;
+  const built = p.parts.filter((x) => x.visible && p.builds[x.id]?.solid).length;
+  const total = p.parts.filter((x) => x.visible && !p.builds[x.id]?.error).length;
   const minZ = Math.min(0, ...p.parts.filter((x) => x.visible && p.builds[x.id]?.solid).map((x) => x.position[2] + p.builds[x.id]!.solid!.bbox.min[2] + (offsets[x.id]?.z || 0)));
   const content = (
     <group>
@@ -143,8 +145,8 @@ function Assembly(p: SceneProps) {
   return (
     <>
       <group rotation={[-Math.PI / 2, 0, 0]}>
-        <Bounds margin={1.25}>
-          <FitOnReady count={built} fitKey={p.fitKey} />
+        <Bounds margin={1.7}>
+          <FitOnReady count={built} total={total} fitKey={p.fitKey} />
           {p.float && !p.gizmo ? <Float speed={1.4} rotationIntensity={0.25} floatIntensity={0.6} floatingRange={[-2, 2]}>{content}</Float> : content}
         </Bounds>
         {p.gizmo && target && sel && p.onMove && (
@@ -168,11 +170,12 @@ export function Scene(props: SceneProps) {
   return (
     <Canvas camera={{ position: [160, 120, 220], fov: 38, near: 0.5, far: 8000 }} dpr={[1, 2]} gl={{ antialias: true, preserveDrawingBuffer: true }}
       onPointerMissed={() => props.onSelect?.(null)} style={{ touchAction: "none" }}>
-      <color attach="background" args={["#0b0b10"]} />
-      <hemisphereLight args={["#e8eeff", "#1a1a20", 0.7]} />
-      <directionalLight position={[220, 320, 180]} intensity={1.9} />
-      <directionalLight position={[-260, 120, -160]} intensity={0.6} color="#b9c6ff" />
-      <directionalLight position={[0, -200, 120]} intensity={0.25} />
+      <color attach="background" args={["#121219"]} />
+      <ambientLight intensity={0.35} />
+      <hemisphereLight args={["#eef2ff", "#22222a", 1.1]} />
+      <directionalLight position={[220, 320, 180]} intensity={2.4} />
+      <directionalLight position={[-260, 140, -160]} intensity={1.0} color="#c3ceff" />
+      <directionalLight position={[0, -200, 160]} intensity={0.45} />
       <Suspense fallback={null}><Assembly {...props} /></Suspense>
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} />
     </Canvas>

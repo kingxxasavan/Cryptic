@@ -39,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let stop = () => {};
+    // If Firebase can't be reached, carry on signed out rather than waiting forever.
+    const giveUp = setTimeout(() => setReady(true), 4000);
     auth().then(({ a, m }) => {
       stop = m.onAuthStateChanged(a, (u) => {
         current = u;
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setReady(true);
       });
     }).catch(() => setReady(true));
-    return () => stop();
+    return () => { stop(); clearTimeout(giveUp); };
   }, []);
   const api = useMemo<AuthApi>(() => ({
     me, ready,
