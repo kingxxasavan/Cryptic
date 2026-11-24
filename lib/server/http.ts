@@ -1,16 +1,16 @@
 // Small helpers shared by the API routes.
 import "server-only";
-import { spend, verify, type User } from "./auth";
+import { DAILY_LIMIT, clientIp, limiter } from "./limit";
+
+const take = limiter(DAILY_LIMIT);
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "cache-control": "no-store" } });
 
-/** Signed in and within today's limit, or the response to send instead. */
-export async function gate(req: Request): Promise<{ user: User; left: number } | { res: Response }> {
-  const user = await verify(req);
-  if (!user) return { res: json({ error: "Sign in to use the AI." }, 401) };
-  const s = await spend(user);
-  if ("error" in s) return { res: json({ error: s.error }, 429) };
-  return { user, left: s.left };
+/** Within today's limit for this network, or the response to send instead. */
+export async function gate(req: Request): Promise<{ left: number } | { res: Response }> {
+  const r = take(clientIp(req));
+  if (!r.ok) return { res: json({ error: r.error }, 429) };
+  return { left: r.left };
 }
 
 /** A response that streams one JSON object per line, with a heartbeat so nothing in between gives up. */

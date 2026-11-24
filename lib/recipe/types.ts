@@ -84,7 +84,7 @@ export interface Project {
   research: Fact[];
   createdAt: number;
   updatedAt: number;
-  owner?: string;
+  /** True while a share link is live (see lib/store/projects.ts). */
   shared?: boolean;
 }
 

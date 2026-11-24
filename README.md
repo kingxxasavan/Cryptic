@@ -25,6 +25,8 @@ and export for printing.
   part, fitted to its size. Sizes and exports always use the exact shape.
 * **Share.** A link anyone can open to view and download, and an embeddable
   view for other sites.
+* **No accounts.** Nobody signs in. Projects are saved in your browser; sharing
+  publishes a copy that only your browser can change.
 
 Open the **sample glasses** on the home page to try everything without the AI.
 
@@ -43,29 +45,33 @@ npm run typecheck && npm run lint && npm run build
 2. **Settings → Environment Variables**:
    * `NVIDIA_API_KEY`: the same `nvapi-…` key the hub uses (build.nvidia.com →
      profile → API Keys). Powers the design, edit and realistic look.
-   * `OWNER_EMAIL`: your email. You get unlimited AI requests; everyone else gets
-     40 a day so a shared link can't run up your NVIDIA credits.
+   * `AI_DAILY_LIMIT` (optional, default 40): AI requests per network address
+     per day, so a shared link can't run up your NVIDIA credits. Counted in the
+     server's memory, so it's a rough limit.
    * `TAVILY_API_KEY` (optional, recommended): makes research dependable. Without
      it the free search sources are used, which can turn Vercel's servers away.
    * `PARTS_MODEL` (optional): pin one NVIDIA model id. Leave it unset and the
      best available model is picked per request, skipping retired ones.
 3. Redeploy after adding variables.
 
-## Firebase (accounts, saving, sharing)
+## Firebase (share links)
 
-The site uses the existing Firebase project `chat-f6735`.
+The site uses the Realtime Database of the existing Firebase project
+`chat-f6735` for share links only. There's no sign in, so nothing to switch on
+under Authentication.
 
-1. **Authentication → Sign in method**: enable **Email/Password** and
-   **Google**.
-2. **Authentication → Settings → Authorized domains**: add your Vercel domain.
-3. **Realtime Database → Rules**: other apps use this database, so **don't
-   replace everything**. Copy the `"parts": { … }` block from
-   `database.rules.json` and paste it inside your existing `"rules": { … }` next
-   to what's there, then **Publish**.
+**Realtime Database → Rules**: other apps use this database, so **don't
+replace everything**. Copy the `"parts": { … }` block from
+`database.rules.json` and paste it inside your existing `"rules": { … }` next
+to what's there, then **Publish**.
 
-What the rules allow: a project is written only by its owner and read by its
-owner, or by anyone when it's shared. The daily AI counter can only go up by
-one. Realistic meshes are readable by id.
+How sharing stays safe without accounts: a shared project lives at
+`parts/shared/<id>/data`, readable by anyone with the link. The browser that
+shared it keeps a secret key; every change has to quote the current key and
+set a new one, and the rules keep the key unreadable, so nobody else can
+change or remove it and an old key can't be reused. Realistic meshes are
+written once by random id. If you clear your browser's data you lose the key:
+make a copy of the project to share it again.
 
 ## Sharing with Andrew
 
@@ -77,7 +83,7 @@ one. Realistic meshes are readable by id.
 ```
 
 People who open the link see the model, the spec sheet and every download. Only
-the owner can change it; signed in visitors can **Make a copy**.
+the browser that shared it can change it; anyone can **Make a copy**.
 
 ## How it fits together
 
@@ -88,22 +94,22 @@ the owner can change it; signed in visitors can **Make a copy**.
 | `lib/editor` | AI change lists (all or nothing) and undo history |
 | `lib/export` | STL, OBJ, PLY, GLB, 3MF writers and the spec sheet |
 | `lib/ai` | Prompts (the recipe rules the model is given), JSON extraction, the browser client |
-| `lib/server` | NVIDIA models with fallback, web research, sign in check, daily limit, the design pipeline |
+| `lib/server` | NVIDIA models with fallback, web research, the per address daily limit, the design pipeline |
 | `app/api` | `design` (streams progress), `edit`, `realistic`, `status` |
-| `components` | The 3D scene, the editor and inspector, sign in, share |
+| `components` | The 3D scene, the editor and inspector, share |
 
 Conventions: millimetres, degrees, Z up (like printers). GLB is converted to
 glTF's metres and Y up.
 
 ## Testing end to end
 
-`scripts/e2e.cjs` drives Chromium through sign up, an AI design (stubbed),
-research, an AI edit, undo, the TRELLIS failure message, sharing, the embed
-view, a stranger's view only page and unsharing, against the Firebase
-emulators with this repo's rules:
+`scripts/e2e.cjs` drives Chromium through an AI design (stubbed), research,
+an AI edit, undo, the TRELLIS failure message, sharing, the embed view, a
+stranger's view only page and unsharing, against the Firebase database
+emulator with this repo's rules:
 
 ```bash
-npx firebase emulators:start --only auth,database --project chat-f6735
+npx firebase emulators:start --only database --project chat-f6735
 npm run build && npm start
 node scripts/e2e.cjs http://127.0.0.1:3000
 ```

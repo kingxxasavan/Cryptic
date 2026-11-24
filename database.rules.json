@@ -1,32 +1,29 @@
 {
   "rules": {
     "parts": {
-      "projects": {
+      "shared": {
         "$id": {
-          ".read": "data.child('shared').val() === true || (auth != null && data.child('owner').val() === auth.uid)",
-          ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid) || (data.child('owner').val() === auth.uid && (!newData.exists() || newData.child('owner').val() === auth.uid)))",
-          ".validate": "!newData.exists() || (newData.hasChildren(['name', 'owner', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 120)"
-        }
-      },
-      "byOwner": {
-        "$uid": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
+          ".write": "(!data.exists() && newData.child('k').isString() && newData.child('k').val().length >= 20 && !newData.child('prev').exists()) || (data.exists() && newData.child('prev').val() === data.child('k').val() && newData.child('k').isString() && newData.child('k').val().length >= 20 && newData.child('k').val() !== data.child('k').val())",
+          "data": {
+            ".read": "true",
+            ".validate": "newData.hasChildren(['name', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 120"
+          },
+          "k": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "prev": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "$other": {
+            ".validate": "false"
+          }
         }
       },
       "meshes": {
         "$id": {
           ".read": "true",
-          ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid) || data.child('owner').val() === auth.uid)",
-          ".validate": "!newData.exists() || (newData.child('owner').isString() && newData.child('glb').isString() && newData.child('glb').val().length <= 8400000)"
-        }
-      },
-      "usage": {
-        "$uid": {
-          "$day": {
-            ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
-          }
+          ".write": "!data.exists()",
+          ".validate": "newData.isString() && newData.val().length <= 8400000"
         }
       }
     }

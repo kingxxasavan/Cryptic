@@ -1,17 +1,22 @@
 "use client";
-// Where projects live: always in this browser (IndexedDB), and in the cloud
-// too when you're signed in. A shared project can be read by anyone with the
-// link; only its owner can write it.
+// Where projects live: in this browser (IndexedDB). There are no accounts.
+//
+// Sharing puts a copy at parts/shared/$id/data, which anyone with the link can
+// read. Only the browser that shared it can change it: it holds a secret key,
+// and every write has to quote the current key and replace it with a new one
+// (the database rules check both and keep the key unreadable). A key that's
+// quoted correctly once is never valid again, so it can't be replayed.
 import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from "idb-keyval";
 import type { Project } from "@/lib/recipe/types";
 import { normalizeProject } from "@/lib/recipe/normalize";
 import { validateProject } from "@/lib/recipe/validate";
 import { getFirebaseApp } from "@/lib/firebase";
 
-export interface Summary { id: string; name: string; updatedAt: number; parts: number; where: "browser" | "cloud"; shared?: boolean }
+export interface Summary { id: string; name: string; updatedAt: number; parts: number; shared?: boolean }
 
 const LKEY = (id: string) => "project:" + id;
 const MKEY = (id: string) => "mesh:" + id;
+const SKEY = (id: string) => "sharekey:" + id;
 
 async function rtdb() {
   const app = await getFirebaseApp();
@@ -22,23 +27,71 @@ async function rtdb() {
 /** JSON round trip drops undefined, which the database refuses. */
 const plain = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
-export async function saveLocal(p: Project) { await idbSet(LKEY(p.id), plain(p)); }
+export function newId(len = 10): string {
+  const a = new Uint8Array(len);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+}
 
-export async function saveCloud(p: Project, uid: string) {
+// ---- This browser ----------------------------------------------------------------
+export async function saveLocal(p: Project) { await idbSet(LKEY(p.id), plain(p)); }
+export async function isMine(id: string): Promise<boolean> { return !!(await idbGet(LKEY(id)).catch(() => null)); }
+
+export async function listProjects(): Promise<Summary[]> {
+  const out: Summary[] = [];
+  for (const k of (await idbKeys().catch(() => [])) as string[]) {
+    if (!String(k).startsWith("project:")) continue;
+    const p = (await idbGet(k)) as Project | undefined;
+    if (p) out.push({ id: p.id, name: p.name, updatedAt: p.updatedAt, parts: (p.parts || []).length, shared: p.shared });
+  }
+  return out.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+// ---- The shared copy ----------------------------------------------------------------
+// One write at a time per project, so each one quotes the key the last one set.
+const queue = new Map<string, Promise<unknown>>();
+function serial<T>(id: string, job: () => Promise<T>): Promise<T> {
+  const next = (queue.get(id) || Promise.resolve()).catch(() => {}).then(job);
+  queue.set(id, next);
+  return next;
+}
+
+async function writeShared(id: string, data: Project | null): Promise<void> {
   const { db, m } = await rtdb();
-  const row = plain({ ...p, owner: uid, shared: !!p.shared });
-  await m.update(m.ref(db), {
-    ["parts/projects/" + p.id]: row,
-    ["parts/byOwner/" + uid + "/" + p.id]: { name: p.name, updatedAt: p.updatedAt, parts: p.parts.length, shared: !!p.shared },
+  const current = (await idbGet(SKEY(id)).catch(() => null)) as string | null;
+  const next = newId(32);
+  const base = "parts/shared/" + id;
+  try {
+    if (current) await m.update(m.ref(db), { [base + "/data"]: data ? plain(data) : null, [base + "/prev"]: current, [base + "/k"]: next });
+    else await m.set(m.ref(db, base), { data: data ? plain(data) : null, k: next });
+  } catch (e) {
+    throw new Error(/permission/i.test(String((e as Error).message))
+      ? "This share link was changed from another browser or tab, so this one can't update it. Copy the project to share it again."
+      : "Couldn't update the share link: " + (e as Error).message);
+  }
+  await idbSet(SKEY(id), next);
+}
+
+/** Turns the share link on (and uploads any realistic looks it uses). */
+export function shareProject(p: Project): Promise<void> {
+  return serial(p.id, async () => {
+    await writeShared(p.id, { ...p, shared: true });
+    for (const part of p.parts) if (part.realistic) await uploadMesh(part.realistic.meshId);
   });
 }
 
-export async function saveProject(p: Project, uid: string | null) {
-  await saveLocal(p);
-  if (uid && (!p.owner || p.owner === uid)) await saveCloud({ ...p, owner: uid }, uid);
+/** Turns the share link off. The link then says it isn't shared. */
+export function unshareProject(id: string): Promise<void> {
+  return serial(id, () => writeShared(id, null));
 }
 
-export async function loadProject(id: string): Promise<{ project: Project; where: "browser" | "cloud" } | { error: string }> {
+/** Saves in this browser, and updates the share link when it's on. */
+export async function saveProject(p: Project): Promise<void> {
+  await saveLocal(p);
+  if (p.shared) await serial(p.id, () => writeShared(p.id, p));
+}
+
+export async function loadProject(id: string): Promise<{ project: Project; where: "browser" | "shared" } | { error: string }> {
   const local = await idbGet(LKEY(id)).catch(() => null);
   if (local) {
     const v = validateProject(normalizeProject(local));
@@ -46,59 +99,37 @@ export async function loadProject(id: string): Promise<{ project: Project; where
   }
   try {
     const { db, m } = await rtdb();
-    const snap = await m.get(m.ref(db, "parts/projects/" + id));
-    if (!snap.exists()) return { error: "There's no project at this link, or it isn't shared." };
+    const snap = await m.get(m.ref(db, "parts/shared/" + id + "/data"));
+    if (!snap.exists()) return { error: "There's no shared project at this link. It may have been unshared." };
     const v = validateProject(normalizeProject(snap.val()));
     if (!v.ok) return { error: "This project couldn't be read: " + v.errors[0] };
-    return { project: v.project, where: "cloud" };
+    return { project: v.project, where: "shared" };
   } catch (e) {
-    return { error: /permission/i.test(String((e as Error).message)) ? "This project isn't shared. Ask its owner to share it." : "Couldn't load the project: " + (e as Error).message };
+    return { error: "Couldn't load the project: " + (e as Error).message };
   }
 }
 
-export async function listProjects(uid: string | null): Promise<Summary[]> {
-  const out: Summary[] = [];
-  for (const k of (await idbKeys().catch(() => [])) as string[]) {
-    if (!String(k).startsWith("project:")) continue;
-    const p = (await idbGet(k)) as Project | undefined;
-    if (p) out.push({ id: p.id, name: p.name, updatedAt: p.updatedAt, parts: (p.parts || []).length, where: "browser", shared: p.shared });
-  }
-  if (uid) {
-    try {
-      const { db, m } = await rtdb();
-      const snap = await m.get(m.ref(db, "parts/byOwner/" + uid));
-      const v = (snap.val() || {}) as Record<string, { name: string; updatedAt: number; parts: number; shared?: boolean }>;
-      for (const [id, s] of Object.entries(v)) {
-        const i = out.findIndex((x) => x.id === id);
-        const row: Summary = { id, name: s.name, updatedAt: s.updatedAt, parts: s.parts, where: "cloud", shared: s.shared };
-        if (i === -1) out.push(row); else if (s.updatedAt >= out[i].updatedAt) out[i] = row;
-      }
-    } catch { /* offline: the browser's list is still good */ }
-  }
-  return out.sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-export async function deleteProject(id: string, uid: string | null) {
+export async function deleteProject(id: string) {
+  if (await idbGet(SKEY(id)).catch(() => null)) await unshareProject(id).catch(() => {});
   await idbDel(LKEY(id)).catch(() => {});
-  if (uid) {
-    const { db, m } = await rtdb();
-    await m.update(m.ref(db), { ["parts/projects/" + id]: null, ["parts/byOwner/" + uid + "/" + id]: null }).catch(() => {});
-  }
+  await idbDel(SKEY(id)).catch(() => {});
 }
 
 // ---- Realistic meshes (TRELLIS GLB files) --------------------------------------
+// Kept in this browser; uploaded (write once, by random id) when the project is shared.
 const MAX_CLOUD_MESH = 6 * 1024 * 1024;
 const toB64 = (u8: Uint8Array) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
 const fromB64 = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
-export async function saveMesh(id: string, glb: Uint8Array, uid: string | null): Promise<{ cloud: boolean }> {
-  await idbSet(MKEY(id), glb);
-  if (!uid || glb.byteLength > MAX_CLOUD_MESH) return { cloud: false };
+export async function saveMesh(id: string, glb: Uint8Array): Promise<void> { await idbSet(MKEY(id), glb); }
+
+async function uploadMesh(id: string): Promise<void> {
+  const glb = (await idbGet(MKEY(id)).catch(() => null)) as Uint8Array | null;
+  if (!glb || glb.byteLength > MAX_CLOUD_MESH) return;
   try {
     const { db, m } = await rtdb();
-    await m.set(m.ref(db, "parts/meshes/" + id), { owner: uid, glb: toB64(glb) });
-    return { cloud: true };
-  } catch { return { cloud: false }; }
+    await m.set(m.ref(db, "parts/meshes/" + id), toB64(glb));
+  } catch { /* already uploaded (write once), or offline: the exact shape still shows */ }
 }
 
 export async function loadMesh(id: string): Promise<Uint8Array | null> {
@@ -106,16 +137,10 @@ export async function loadMesh(id: string): Promise<Uint8Array | null> {
   if (local) return local;
   try {
     const { db, m } = await rtdb();
-    const snap = await m.get(m.ref(db, "parts/meshes/" + id + "/glb"));
+    const snap = await m.get(m.ref(db, "parts/meshes/" + id));
     if (!snap.exists()) return null;
     const u8 = fromB64(String(snap.val()));
     await idbSet(MKEY(id), u8).catch(() => {});
     return u8;
   } catch { return null; }
-}
-
-export function newId(): string {
-  const a = new Uint8Array(10);
-  crypto.getRandomValues(a);
-  return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
 }
