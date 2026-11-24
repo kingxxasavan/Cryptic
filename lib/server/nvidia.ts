@@ -55,13 +55,17 @@ export async function chat(messages: Msg[], opts: { maxTokens?: number; temperat
   if (!nvidiaReady()) throw new Error("NVIDIA_API_KEY isn't set on the server. Add it in Vercel → Settings → Environment Variables and redeploy.");
   const models = await candidates();
   let last = "No model answered.";
+  // One time limit for every try together, so falling back never runs past it.
+  const end = Date.now() + (opts.timeoutMs ?? 150000);
   for (const model of models) {
+    const remaining = end - Date.now();
+    if (remaining < 4000) { last += " (ran out of time trying models)"; break; }
     try {
       const res = await fetch(BASE + "/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer " + key() },
         body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens ?? 8000, temperature: opts.temperature ?? 0.3, stream: false }),
-        signal: AbortSignal.timeout(opts.timeoutMs ?? 150000),
+        signal: AbortSignal.timeout(remaining),
       });
       if (!res.ok) {
         const body = (await res.text()).slice(0, 300);
